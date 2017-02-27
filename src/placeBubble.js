@@ -35,6 +35,9 @@ const Place = imports.place;
 const PlaceFormatter = imports.placeFormatter;
 const PlaceStore = imports.placeStore;
 const Utils = imports.utils;
+const Wikipedia = imports.wikipedia;
+
+const THUMBNAIL_SIZE = 128;
 
 const PlaceBubble = new Lang.Class({
     Name: 'PlaceBubble',
@@ -104,9 +107,8 @@ const PlaceBubble = new Lang.Class({
     },
 
     _formatWikiLink: function(wiki) {
-        let tokens = wiki.split(':');
-        let lang = tokens[0];
-        let article = GLib.markup_escape_text(tokens.splice(1).join(':'), -1);
+        let lang = Wikipedia.getLanguage(wiki);
+        let article = Wikipedia.getArticle(wiki);
 
         return Format.vprintf('https://%s.wikipedia.org/wiki/%s', [ lang, article ]);
     },
@@ -231,6 +233,21 @@ const PlaceBubble = new Lang.Class({
         this._title.label = formatter.title;
         this._expandButton.visible = expandedContent.length > 0;
         this._stack.visible_child = this._gridContent;
+
+        if (place.wiki)
+            this._requestWikipediaThumbnail(place.wiki);
+    },
+
+    _requestWikipediaThumbnail: function(wiki) {
+        Wikipedia.fetchArticleThumbnail(wiki, THUMBNAIL_SIZE,
+                                        this._onThumbnailComplete.bind(this));
+    },
+
+    _onThumbnailComplete: function(thumbnail) {
+        if (thumbnail) {
+            this.thumbnail.pixbuf = thumbnail;
+            this.iconStack.visible_child_name = 'thumbnail';
+        }
     },
 
     // clear the view widgets to be able to re-populate an updated place
